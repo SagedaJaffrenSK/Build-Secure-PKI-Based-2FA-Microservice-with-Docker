@@ -1,6 +1,5 @@
 fastapi
-uvicorn[standard]
+uvicorn
+pycryptodome
 pyotp
-cryptography
-python-dotenv
-requests
+qrcode

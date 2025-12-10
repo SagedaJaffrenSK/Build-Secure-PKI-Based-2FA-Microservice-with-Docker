@@ -1,16 +1,14 @@
-import hmac
-import hashlib
-import time
-import struct
+# app/scripts/totp_utils.py
+import pyotp
+import qrcode
+from io import BytesIO
+import base64
 
-def generate_totp_code(hex_seed, interval=30, digits=6):
-    """
-    Generate a TOTP code from a hex seed.
-    """
-    key = bytes.fromhex(hex_seed)
-    counter = int(time.time() // interval)
-    msg = struct.pack(">Q", counter)
-    h = hmac.new(key, msg, hashlib.sha1).digest()
-    o = h[-1] & 0x0F
-    code = (struct.unpack(">I", h[o:o+4])[0] & 0x7FFFFFFF) % (10 ** digits)
-    return f"{code:0{digits}}"
+def generate_secret_uri(label="student", issuer="PKI-2FA"):
+    secret = pyotp.random_base32()
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(name=label, issuer_name=issuer)
+    return secret, uri
+
+def verify_token(secret, token):
+    totp = pyotp.TOTP(secret)
+    return totp.verify(token, valid_window=1)

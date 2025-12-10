@@ -2,30 +2,28 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install cron and bash
+# install cron + bash
 RUN apt-get update && apt-get install -y --no-install-recommends cron bash \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy project
 COPY app ./app
 COPY cron ./cron
 COPY scripts ./scripts
-COPY commit.sig .
 COPY student_private.pem .
 COPY instructor_public.pem .
 
-# Permissions
+# Make entrypoint executable
 RUN chmod +x /scripts/entrypoint.sh || true
 
-# Persistent directory
+# Data volume for persistence
 RUN mkdir -p /data
 VOLUME ["/data"]
 
 EXPOSE 8000
 
-# Run cron + API via entrypoint
 CMD ["bash", "/scripts/entrypoint.sh"]

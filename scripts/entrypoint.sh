@@ -1,4 +1,18 @@
-#!/usr/bin/env bash
-set -e
-service cron start || cron
-exec uvicorn app.main:app --host 0.0.0.0 --port 8080
+#!/bin/bash
+set -euo pipefail
+
+# register cron job if file exists
+if [ -f /cron/2fa-cron ]; then
+  cp /cron/2fa-cron /etc/cron.d/2fa-cron
+  chmod 0644 /etc/cron.d/2fa-cron
+  crontab /etc/cron.d/2fa-cron
+fi
+
+# start cron (background)
+service cron start || cron &
+
+# ensure /data exists
+mkdir -p /data
+
+# start API (use correct path to your main)
+exec python /app/scripts/main.py

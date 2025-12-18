@@ -1,5 +1,6 @@
 # Do not commit encrypted seed
 encrypted_seed.txt
+seed.bin
 
 # python cache
 __pycache__/
@@ -8,3 +9,18 @@ __pycache__/
 .env
 .vscode/
 .idea/
+
+# Ignore ALL pem EXCEPT allowed public keys
+*.pem
+!student_private.pem
+!instructor_public.pem
+
+# Ignore bin except needed
+*.bin
+!enc.bin
+
+# ignore commit artifacts EXCEPT required ones
+commit.*
+!commit.txt
+!commit.sig.b64
+

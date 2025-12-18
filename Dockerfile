@@ -13,11 +13,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY app ./app
 COPY cron ./cron
-COPY scripts ./scripts
-COPY student_private.pem .
+COPY app/scripts ./app/scripts
 COPY instructor_public.pem .
 
 # Make entrypoint executable
+
 RUN chmod +x /scripts/entrypoint.sh || true
 
 # Data volume for persistence
@@ -26,4 +26,4 @@ VOLUME ["/data"]
 
 EXPOSE 8000
 
-CMD ["bash", "/scripts/entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

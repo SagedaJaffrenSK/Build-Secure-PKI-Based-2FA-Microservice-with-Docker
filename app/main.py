@@ -1,41 +1,62 @@
+# app/main.py
 from fastapi import FastAPI, HTTPException
-import uvicorn
-from pathlib import Path
+from pydantic import BaseModel
+import os
 
-from crypto_utils import decrypt_signature
-from totp_utils import generate_secret_uri, verify_token
+from app.crypto_utils import decrypt_signature
+from app.totp_utils import generate_secret_uri, verify_token
 
 app = FastAPI()
 
+SEED_PATH = "/data/seed.txt"
+
+
+class EncryptedSeed(BaseModel):
+    encrypted_seed: str
+
+
+class VerifyRequest(BaseModel):
+    token: str
+
+
+# ------------------ DECRYPT SEED ------------------
 @app.post("/decrypt-seed")
-async def decrypt_seed(payload: dict):
-    sig = payload.get("signature")
-    if not sig:
-        raise HTTPException(status_code=400, detail="signature required")
-    
-    seed_hex = decrypt_signature(sig)
-    
-    # persist seed
-    Path("/data").mkdir(parents=True, exist_ok=True)
-    (Path("/data") / "seed.txt").write_text(seed_hex)
+def decrypt_seed(payload: EncryptedSeed):
+    try:
+        secret = decrypt_signature(payload.encrypted_seed)
 
-    return {"seed": seed_hex}
+        os.makedirs("/data", exist_ok=True)
+        with open(SEED_PATH, "w") as f:
+            f.write(secret)
 
+        return {"message": "Seed decrypted and stored successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ------------------ GENERATE 2FA ------------------
 @app.get("/generate-2fa")
-async def gen():
-    secret, uri = generate_secret_uri("student")
-    return {"secret": secret, "uri": uri}
+def generate_2fa():
+    if not os.path.exists(SEED_PATH):
+        raise HTTPException(status_code=400, detail="Seed not found")
 
+    with open(SEED_PATH, "r") as f:
+        secret = f.read().strip()
+
+    _, uri = generate_secret_uri()
+    return {"provisioning_uri": uri}
+
+
+# ------------------ VERIFY 2FA ------------------
 @app.post("/verify-2fa")
-async def verify(payload: dict):
-    secret = payload.get("secret")
-    token = payload.get("token")
+def verify_2fa(data: VerifyRequest):
+    if not os.path.exists(SEED_PATH):
+        raise HTTPException(status_code=400, detail="Seed not found")
 
-    if not secret or not token:
-        raise HTTPException(status_code=400, detail="secret & token required")
+    with open(SEED_PATH, "r") as f:
+        secret = f.read().strip()
 
-    ok = verify_token(secret, token)
-    return {"valid": bool(ok)}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    if verify_token(secret, data.token):
+        return {"status": "success"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid token")
